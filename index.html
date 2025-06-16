@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BP Currency System - Dark Web Style</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    body {
+      background: #0d0d0d;
+      color: #33ff33;
+      font-family: 'Share Tech Mono', monospace;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      padding-top: 20px;
+    }
+    h1 {
+      color: #00ff99;
+      text-shadow: 0 0 8px #00ff99;
+    }
+    .tab-buttons {
+      margin: 20px;
+    }
+    .tab-buttons button {
+      background: #111;
+      color: #33ff33;
+      border: 1px solid #33ff33;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    .tab-buttons button.active {
+      background: #33ff33;
+      color: #000;
+    }
+    .tab {
+      display: none;
+      width: 90%;
+      max-width: 600px;
+      background: #1a1a1a;
+      padding: 20px;
+      border: 1px solid #33ff33;
+      margin-bottom: 20px;
+    }
+    .tab.active {
+      display: block;
+    }
+    input, button {
+      margin-top: 10px;
+      padding: 8px;
+      width: 100%;
+      background: #000;
+      color: #33ff33;
+      border: 1px solid #33ff33;
+    }
+    .log {
+      max-height: 150px;
+      overflow-y: auto;
+      background: #000;
+      border: 1px solid #444;
+      padding: 10px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>BP CURRENCY SYSTEM</h1>
+  <div class="tab-buttons">
+    <button onclick="switchTab('home')" class="active">Home</button>
+    <button onclick="switchTab('trade')">Trading</button>
+    <button onclick="switchTab('transfer')">Transfer</button>
+    <button onclick="switchTab('income')">Income</button>
+    <button onclick="switchTab('expenses')">Expenses</button>
+  </div>
+
+  <div id="home" class="tab active">
+    <p>Balance: <span id="balance">3000</span> BP</p>
+    <p>Next Server Fee: <span id="nextFee"></span></p>
+    <button onclick="payServerFee()">Pay Server Fee (50 BP)</button>
+  </div>
+
+  <div id="trade" class="tab">
+    <p>Wheat Price: <span id="wheatPrice"></span> BP/kg</p>
+    <input type="number" id="wheatBp" placeholder="BP to spend on wheat">
+    <button onclick="buy('wheat')">Buy Wheat</button>
+    <input type="number" id="wheatKg" placeholder="KG to sell">
+    <button onclick="sell('wheat')">Sell Wheat</button>
+
+    <p>Wool Price: <span id="woolPrice"></span> BP/kg</p>
+    <input type="number" id="woolBp" placeholder="BP to spend on wool">
+    <button onclick="buy('wool')">Buy Wool</button>
+    <input type="number" id="woolKg" placeholder="KG to sell">
+    <button onclick="sell('wool')">Sell Wool</button>
+  </div>
+
+  <div id="transfer" class="tab">
+    <input type="number" id="sendAmount" placeholder="Amount to send">
+    <button onclick="generateCode()">Generate Code</button>
+    <p>Code: <span id="transferCode"></span></p>
+    <input type="text" id="redeemCode" placeholder="Paste code here">
+    <button onclick="redeemCode()">Redeem</button>
+  </div>
+
+  <div id="income" class="tab">
+    <div class="log" id="incomeLog"></div>
+  </div>
+
+  <div id="expenses" class="tab">
+    <div class="log" id="expenseLog"></div>
+  </div>
+
+  <script>
+    let balance = 3000;
+    let feeAmount = 50;
+    let wheatPrice = rand(140, 180);
+    let woolPrice = rand(50, 90);
+    let serverFeeDue = new Date();
+    let codes = {};
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function updateDisplay() {
+      document.getElementById('balance').textContent = balance;
+      document.getElementById('wheatPrice').textContent = wheatPrice;
+      document.getElementById('woolPrice').textContent = woolPrice;
+      document.getElementById('nextFee').textContent = serverFeeDue.toLocaleDateString();
+    }
+
+    function switchTab(id) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelectorAll('.tab-buttons button').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    function payServerFee() {
+      if (balance >= feeAmount) {
+        balance -= feeAmount;
+        serverFeeDue.setMonth(serverFeeDue.getMonth() + 1);
+        log('expense', `Paid server fee: ${feeAmount} BP`);
+        updateDisplay();
+      } else alert('Not enough BP');
+    }
+
+    function buy(item) {
+      let price = item === 'wheat' ? wheatPrice : woolPrice;
+      let amount = parseFloat(document.getElementById(item + 'Bp').value);
+      if (isNaN(amount) || amount <= 0) return;
+      if (balance < amount) return alert('Insufficient BP');
+      let kg = Math.floor((amount / price) * 100) / 100;
+      balance -= amount;
+      log('expense', `Bought ${kg}kg ${item} for ${amount} BP`);
+      updateDisplay();
+    }
+
+    function sell(item) {
+      let price = item === 'wheat' ? wheatPrice : woolPrice;
+      let kg = parseFloat(document.getElementById(item + 'Kg').value);
+      if (isNaN(kg) || kg <= 0) return;
+      let earned = Math.floor((kg * price) * 100) / 100;
+      balance += earned;
+      log('income', `Sold ${kg}kg ${item} for ${earned} BP`);
+      updateDisplay();
+    }
+
+    function generateCode() {
+      let amt = parseFloat(document.getElementById('sendAmount').value);
+      if (isNaN(amt) || amt <= 0 || amt > balance) return;
+      let code = Math.random().toString(36).substring(2, 8);
+      codes[code] = amt;
+      balance -= amt;
+      document.getElementById('transferCode').textContent = code;
+      log('expense', `Sent ${amt} BP (Code: ${code})`);
+      updateDisplay();
+    }
+
+    function redeemCode() {
+      let code = document.getElementById('redeemCode').value.trim();
+      if (codes[code]) {
+        let amt = codes[code];
+        balance += amt;
+        log('income', `Received ${amt} BP (Code: ${code})`);
+        delete codes[code];
+        updateDisplay();
+      } else alert('Invalid code');
+    }
+
+    function log(type, message) {
+      const logId = type === 'income' ? 'incomeLog' : 'expenseLog';
+      const log = document.getElementById(logId);
+      log.innerHTML += `> ${message}<br>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    updateDisplay();
+    setInterval(() => {
+      wheatPrice = rand(140, 180);
+      woolPrice = rand(50, 90);
+      updateDisplay();
+    }, 15000); // refresh prices every 15 sec
+  </script>
+</body>
+</html>
